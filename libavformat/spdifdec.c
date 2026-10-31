@@ -99,6 +99,11 @@ static int spdif_get_offset_and_codec(AVFormatContext *s,
         *offset = 24576;
         *codec = AV_CODEC_ID_EAC3;
         break;
+    case IEC61937_TRUEHD:
+        /* TrueHD is transported in MAT frames in the IEC 61937 burst stream. */
+        *offset = 61440;
+        *codec = AV_CODEC_ID_TRUEHD;
+        break;
     default:
         if (s) { /* be silent during a probe */
             avpriv_request_sample(s, "Data type 0x%04x in IEC 61937",

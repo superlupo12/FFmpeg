@@ -95,6 +95,17 @@ static int spdif_get_offset_and_codec(AVFormatContext *s,
         *offset = 8192;
         *codec = AV_CODEC_ID_DTS;
         break;
+    case IEC61937_DTSHD:
+        /*
+         * DTS-HD uses the subtype bits in the upper byte of the IEC 61937
+         * data type as a repetition-period selector.  The values map to
+         * periods 512, 1024, 2048, 4096, 8192 and 16384 IEC60958 frames, so
+         * the payload spacing is 2048 bytes per step; the subtype selects the
+         * exponent in the 2048 << n formula.
+         */
+        *offset = 2048 << ((data_type >> 8) & 0x7);
+        *codec = AV_CODEC_ID_DTS;
+        break;
     case IEC61937_EAC3:
         *offset = 24576;
         *codec = AV_CODEC_ID_EAC3;
@@ -109,9 +120,13 @@ static int spdif_get_offset_and_codec(AVFormatContext *s,
     return 0;
 }
 
-/* Largest offset between bursts we currently handle, i.e. AAC with
-   samples = 4096 */
-#define SPDIF_MAX_OFFSET 16384
+/* Largest offset between bursts we currently handle:
+ * AAC with 4096 samples gives 16384 bytes, but DTS-HD can be much larger:
+ * subtype 5 uses a repetition period of 16384 IEC60958 frames, i.e.
+ * 16384 * 4 = 65536 bytes.  Keep the probe range above that to detect
+ * valid DTS-HD streams as well as larger AAC bursts.
+ */
+#define SPDIF_MAX_OFFSET 65536
 
 static int spdif_probe(const AVProbeData *p)
 {
@@ -183,6 +198,14 @@ static int spdif_get_pkt_size_bits(int type, int code)
 {
     switch (type & 0xff) {
     case IEC61937_EAC3:
+    case IEC61937_DTSHD:
+        /*
+         * DTS-HD packets are encapsulated with a byte-count length code in
+         * the IEC 61937 "Pd" field, but the packet allocation code expects the
+         * payload size in bits.  Convert the byte count to bits here to match
+         * the E-AC3 handling and keep packet boundaries aligned to 16-bit
+         * words.
+         */
         return code << 3;
     default:
         return code;

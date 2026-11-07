@@ -21,6 +21,9 @@ fate-spdif-dca-master:      CMD = md5 -i $(TARGET_SAMPLES)/dts/master_audio_7.1_
 # This test uses a too low bitrate and therefore switches to only transmit the core.
 fate-spdif-dca-master-core: CMD = md5 -i $(TARGET_SAMPLES)/dts/master_audio_7.1_24bit.dts -c copy -dtshd_rate  96000 -f spdif
 
+FATE_SPDIF-$(call ALLYES, DTS_DEMUXER DCA_DECODER SPDIF_MUXER SPDIF_DEMUXER MD5_MUXER PCM_S24LE_ENCODER ARESAMPLE_FILTER) += fate-spdif-dca-master-pcm-roundtrip
+fate-spdif-dca-master-pcm-roundtrip: CMD = ffmpeg -f dts -i $(TARGET_SAMPLES)/dts/master_audio_7.1_24bit.dts -c copy -dtshd_rate 192000 -f spdif pipe:1 | ffmpeg -f spdif -i pipe:0 -af aresample -c:a pcm_s24le -f md5 -
+
 FATE_SPDIF-$(call DEMMUX, EAC3, SPDIF) += fate-spdif-eac3
 fate-spdif-eac3: CMD = md5 -i $(TARGET_SAMPLES)/eac3/csi_miami_stereo_128_spx.eac3 -c copy -f spdif
 
